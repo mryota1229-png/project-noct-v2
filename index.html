@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#090b10">
+<title>PROJECT: NOCT V2</title>
+<style>
+:root{color-scheme:dark;--bg:#090b10;--panel:#121722;--line:#293346;--text:#edf1f7;--muted:#8e9aae;--accent:#a9b8ff;--warn:#e8d59a;--bad:#ffaaaa;--good:#9fe0b4}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#182033 0,var(--bg) 52%);color:var(--text);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh}
+main{width:min(100% - 28px,640px);margin:auto;padding:32px 0 calc(40px + env(safe-area-inset-bottom))}
+header{text-align:center;margin-bottom:24px}.mark{font-size:11px;letter-spacing:.28em;color:var(--accent);font-weight:700}h1{font-size:clamp(25px,7vw,34px);letter-spacing:.06em;margin:8px 0 4px}.sub{font-size:11px;letter-spacing:.2em;color:var(--muted)}
+.panel{background:rgba(18,23,34,.96);border:1px solid var(--line);border-radius:18px;padding:17px;margin:14px 0;box-shadow:0 12px 35px #0003}
+.switch{display:grid;grid-template-columns:1fr 1fr;background:#0b0f17;border:1px solid var(--line);padding:4px;border-radius:12px;gap:4px}
+button{font:inherit;cursor:pointer}.switch button{border:0;background:transparent;color:var(--muted);padding:11px;border-radius:9px;font-weight:650}.switch button.active{background:#27334b;color:#fff}
+label{display:block;font-size:13px;font-weight:650;margin:17px 0 8px}textarea,input{width:100%;background:#0b1019;color:var(--text);border:1px solid var(--line);border-radius:11px;padding:13px;font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;outline:none}
+textarea{min-height:138px;resize:vertical}input:focus,textarea:focus{border-color:var(--accent)}.hint{color:var(--muted);font-size:12px;margin:7px 1px 0}
+.primary{width:100%;margin-top:17px;border:1px solid #a9b8ff55;border-radius:12px;padding:14px;background:linear-gradient(120deg,#34446a,#252f4c);color:white;font-weight:750;letter-spacing:.08em}
+.primary:disabled{opacity:.45;cursor:wait}.secondary{width:100%;margin-top:9px;border:1px solid var(--line);border-radius:10px;padding:11px;background:#171f2d;color:var(--text)}
+.status{margin-top:13px;border:1px solid #6e5b2c;background:#211d12;color:var(--warn);padding:12px;border-radius:10px;font-size:12px;white-space:pre-wrap}
+.status.good{border-color:#315a40;background:#112319;color:var(--good)}.status.bad{border-color:#663737;background:#291616;color:var(--bad)}
+.progress{height:5px;background:#202a3a;border-radius:9px;overflow:hidden;margin-top:10px}.bar{height:100%;width:0;background:var(--accent);transition:width .15s}
+.advanced{display:none}.advanced.show{display:block}.spec{display:grid;grid-template-columns:1fr auto;gap:8px;padding:9px 0;border-bottom:1px solid #222c3c;font-size:12px}.spec:last-child{border:0}.spec span:first-child{color:var(--muted)}.spec span:last-child{font-family:ui-monospace,monospace}
+.notice{font-size:12px;color:var(--warn);border:1px solid #594b2b;background:#201c12;border-radius:11px;padding:12px;margin-top:13px}
+footer{text-align:center;color:#657187;font-size:11px;margin-top:22px}
+</style></head>
+<body><main>
+<header><div class="mark">PROJECT</div><h1>NOCT V2</h1><div class="sub">SECURE TEXT ENCRYPTION</div></header>
+<section class="panel">
+<div class="switch"><button id="simple" class="active" type="button">Simple</button><button id="advanced" type="button">Advanced</button></div>
+<div class="switch" style="margin-top:12px"><button id="encrypt" class="active" type="button">Encrypt</button><button id="decrypt" type="button">Decrypt</button></div>
+<label id="inputLabel" for="source">Original Text</label><textarea id="source" placeholder="Enter text here..." autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
+<label for="passphrase">Passphrase</label><input id="passphrase" type="password" placeholder="Enter passphrase" autocomplete="new-password">
+<p class="hint">UTF-8で最大1,024バイト。空のパスフレーズは使用できません。</p>
+<div id="advancedPanel" class="advanced"><label>V2.0 Cryptographic Parameters</label>
+<div class="spec"><span>KDF</span><span>scrypt</span></div><div class="spec"><span>N / r / p</span><span>131072 / 8 / 1</span></div><div class="spec"><span>Derived key</span><span>32 bytes</span></div><div class="spec"><span>Cipher</span><span>AES-256-GCM</span></div><div class="spec"><span>Salt / Nonce</span><span>16 / 12 bytes</span></div><div class="spec"><span>Authentication tag</span><span>16 bytes</span></div><div class="spec"><span>Max plaintext</span><span>64 MiB</span></div><p class="hint">V2.0のパラメータは互換性維持のため固定。</p></div>
+<button class="primary" id="run" type="button">ENCRYPT</button>
+<div class="progress"><div class="bar" id="bar"></div></div>
+<div class="status" id="status" role="status">起動時にscryptのRFCテストベクトルを確認します。</div>
+<div class="notice">実験版です。暗号処理は端末内で行う設計ですが、実装監査・複数端末での相互運用テストは未完了です。重要なデータの保護にはまだ使用しないでください。</div>
+</section>
+<section class="panel"><label id="outputLabel" for="output">Encrypted Output</label><textarea id="output" readonly placeholder="Result will appear here..." spellcheck="false"></textarea><button class="secondary" id="copy" type="button">Copy output</button></section>
+<footer>NOCT V2 · LOCAL PROCESSING · EXPERIMENTAL BUILD 0.2</footer>
+</main>
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const N=131072,R=8,P=1,DKLEN=32,HEADER=44,TAG=16,MAX=64*1024*1024,MAXPASS=1024;
+const enc=new TextEncoder();
+let action="encrypt",busy=false,selfTestOK=false;
+function setActive(ids,id){ids.forEach(x=>$(x).classList.toggle("active",x===id))}
+$("simple").onclick=()=>{setActive(["simple","advanced"],"simple");$("advancedPanel").classList.remove("show")};
+$("advanced").onclick=()=>{setActive(["simple","advanced"],"advanced");$("advancedPanel").classList.add("show")};
+$("encrypt").onclick=()=>setAction("encrypt");$("decrypt").onclick=()=>setAction("decrypt");
+function setAction(a){if(busy)return;action=a;setActive(["encrypt","decrypt"],a);$("inputLabel").textContent=a==="encrypt"?"Original Text":"Encrypted Text";$("outputLabel").textContent=a==="encrypt"?"Encrypted Output":"Decrypted Output";$("run").textContent=a.toUpperCase();$("source").placeholder=a==="encrypt"?"Enter text here...":"Paste NOCT V2 Base64URL here...";$("output").value=""}
+function status(msg,kind=""){const e=$("status");e.textContent=msg;e.className="status"+(kind?" "+kind:"")}
+function progress(p){$("bar").style.width=Math.max(0,Math.min(100,p*100))+"%"}
+const yieldUI=()=>new Promise(resolve=>setTimeout(resolve,0));
+function rotl(x,n){return (x<<n)|(x>>>(32-n))}
+function salsa208(input){
+ const x=new Uint32Array(input),orig=input;
+ for(let i=0;i<8;i+=2){
+  x[4]^=rotl((x[0]+x[12])>>>0,7);x[8]^=rotl((x[4]+x[0])>>>0,9);x[12]^=rotl((x[8]+x[4])>>>0,13);x[0]^=rotl((x[12]+x[8])>>>0,18);
+  x[9]^=rotl((x[5]+x[1])>>>0,7);x[13]^=rotl((x[9]+x[5])>>>0,9);x[1]^=rotl((x[13]+x[9])>>>0,13);x[5]^=rotl((x[1]+x[13])>>>0,18);
+  x[14]^=rotl((x[10]+x[6])>>>0,7);x[2]^=rotl((x[14]+x[10])>>>0,9);x[6]^=rotl((x[2]+x[14])>>>0,13);x[10]^=rotl((x[6]+x[2])>>>0,18);
+  x[3]^=rotl((x[15]+x[11])>>>0,7);x[7]^=rotl((x[3]+x[15])>>>0,9);x[11]^=rotl((x[7]+x[3])>>>0,13);x[15]^=rotl((x[11]+x[7])>>>0,18);
+  x[1]^=rotl((x[0]+x[3])>>>0,7);x[2]^=rotl((x[1]+x[0])>>>0,9);x[3]^=rotl((x[2]+x[1])>>>0,13);x[0]^=rotl((x[3]+x[2])>>>0,18);
+  x[6]^=rotl((x[5]+x[4])>>>0,7);x[7]^=rotl((x[6]+x[5])>>>0,9);x[4]^=rotl((x[7]+x[6])>>>0,13);x[5]^=rotl((x[4]+x[7])>>>0,18);
+  x[11]^=rotl((x[10]+x[9])>>>0,7);x[8]^=rotl((x[11]+x[10])>>>0,9);x[9]^=rotl((x[8]+x[11])>>>0,13);x[10]^=rotl((x[9]+x[8])>>>0,18);
+  x[12]^=rotl((x[15]+x[14])>>>0,7);x[13]^=rotl((x[12]+x[15])>>>0,9);x[14]^=rotl((x[13]+x[12])>>>0,13);x[15]^=rotl((x[14]+x[13])>>>0,18);
+ }
+ const out=new Uint32Array(16);for(let i=0;i<16;i++)out[i]=(x[i]+orig[i])>>>0;return out;
+}
+function blockMix(B,r){
+ const words=16*2*r,Y=new Uint32Array(words),X=new Uint32Array(16),T=new Uint32Array(16);
+ X.set(B.subarray(words-16,words));
+ for(let i=0;i<2*r;i++){
+  const off=i*16;for(let k=0;k<16;k++)T[k]=X[k]^B[off+k];
+  const next=salsa208(T);X.set(next);Y.set(X,off);
+ }
+ const out=new Uint32Array(words);
+ for(let i=0;i<2*r;i++){const src=(i%2===0?i/2:r+(i-1)/2)*16;out.set(Y.subarray(src,src+16),i*16)}
+ return out;
+}
+function bytesToWordsLE(bytes){const out=new Uint32Array(bytes.length/4),v=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);for(let i=0;i<out.length;i++)out[i]=v.getUint32(i*4,true);return out}
+function wordsToBytesLE(words){const out=new Uint8Array(words.length*4),v=new DataView(out.buffer);for(let i=0;i<words.length;i++)v.setUint32(i*4,words[i],true);return out}
+async function pbkdf2(password,salt,length){
+ const key=await crypto.subtle.importKey("raw",password,{name:"PBKDF2"},false,["deriveBits"]);
+ return new Uint8Array(await crypto.subtle.deriveBits({name:"PBKDF2",hash:"SHA-256",salt,iterations:1},key,length*8));
+}
+async function scrypt(password,salt,n,r,p,dkLen,onProgress=()=>{}){
+ const blockBytes=128*r,Bbytes=await pbkdf2(password,salt,p*blockBytes),B=bytesToWordsLE(Bbytes),blockWords=32*r;
+ for(let lane=0;lane<p;lane++){
+  let X=B.slice(lane*blockWords,(lane+1)*blockWords);
+  const V=new Uint32Array(n*blockWords);
+  for(let i=0;i<n;i++){V.set(X,i*blockWords);X=blockMix(X,r);if((i&1023)===1023){onProgress((lane+(i+1)/n)*0.48/p);await yieldUI()}}
+  for(let i=0;i<n;i++){
+   const j=X[blockWords-16]&(n-1),vo=j*blockWords;
+   for(let k=0;k<blockWords;k++)X[k]^=V[vo+k];
+   X=blockMix(X,r);
+   if((i&1023)===1023){onProgress(0.48+(lane+(i+1)/n)*0.48/p);await yieldUI()}
+  }
+  B.set(X,lane*blockWords);
+  X.fill(0);V.fill(0);
+ }
+ const mixed=wordsToBytesLE(B),derived=await pbkdf2(password,mixed,dkLen);
+ B.fill(0);Bbytes.fill(0);mixed.fill(0);onProgress(1);return derived;
+}
+function concat(a,b){const out=new Uint8Array(a.length+b.length);out.set(a);out.set(b,a.length);return out}
+function b64url(bytes){
+ let bin="";const step=0x8000;for(let i=0;i<bytes.length;i+=step)bin+=String.fromCharCode(...bytes.subarray(i,Math.min(i+step,bytes.length)));
+ return btoa(bin).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+}
+function fromB64url(s){
+ if(!s||!/^[A-Za-z0-9_-]+$/.test(s)||s.length%4===1)throw new Error("NOCT_INVALID_ENCODING");
+ const padded=s.replace(/-/g,"+").replace(/_/g,"/")+"=".repeat((4-s.length%4)%4);
+ let bin;try{bin=atob(padded)}catch{throw new Error("NOCT_INVALID_ENCODING")}
+ const out=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)out[i]=bin.charCodeAt(i);
+ if(b64url(out)!==s)throw new Error("NOCT_INVALID_ENCODING");return out;
+}
+function makeHeader(salt,nonce){
+ const h=new Uint8Array(HEADER);h.set([0x4e,0x4f,0x43,0x54,2,1,1,17],0);
+ const v=new DataView(h.buffer);v.setUint32(8,R,false);v.setUint32(12,P,false);h.set(salt,16);h.set(nonce,32);return h;
+}
+function validateHeader(data){
+ if(data.length<HEADER+TAG)throw new Error("NOCT_INVALID_LENGTH");
+ if(data[0]!==0x4e||data[1]!==0x4f||data[2]!==0x43||data[3]!==0x54)throw new Error("NOCT_INVALID_MAGIC");
+ if(data[4]!==2)throw new Error("NOCT_UNSUPPORTED_VERSION");
+ if(data[5]!==1||data[6]!==1)throw new Error("NOCT_UNSUPPORTED_ALGORITHM");
+ const v=new DataView(data.buffer,data.byteOffset,data.byteLength);
+ if(data[7]!==17||v.getUint32(8,false)!==R||v.getUint32(12,false)!==P)throw new Error("NOCT_INVALID_PARAMETERS");
+}
+async function aesKey(raw){return crypto.subtle.importKey("raw",raw,{name:"AES-GCM"},false,["encrypt","decrypt"])}
+async function encryptText(text,password){
+ const plain=enc.encode(text);if(plain.length>MAX)throw new Error("NOCT_RESOURCE_LIMIT");
+ if(new TextDecoder("utf-8",{fatal:true}).decode(plain)!==text)throw new Error("NOCT_INVALID_UTF8");
+ const salt=crypto.getRandomValues(new Uint8Array(16)),nonce=crypto.getRandomValues(new Uint8Array(12)),header=makeHeader(salt,nonce);
+ status("鍵を生成中… 端末の性能によって時間がかかります。");progress(0);
+ const raw=await scrypt(password,salt,N,R,P,DKLEN,p=>{progress(p);status("scryptで鍵を生成中… "+Math.floor(p*100)+"%")});
+ const key=await aesKey(raw);raw.fill(0);
+ status("AES-256-GCMで暗号化中…");progress(.99);
+ const encrypted=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv:nonce,additionalData:header,tagLength:128},key,plain));
+ const result=b64url(concat(header,encrypted));plain.fill(0);encrypted.fill(0);return result;
+}
+async function decryptText(encoded,password){
+ if(encoded.length>89478566)throw new Error("NOCT_RESOURCE_LIMIT");
+ const data=fromB64url(encoded);if(data.length>MAX+HEADER+TAG)throw new Error("NOCT_RESOURCE_LIMIT");
+ validateHeader(data);
+ const header=data.slice(0,HEADER),salt=data.slice(16,32),nonce=data.slice(32,44),body=data.slice(HEADER);
+ status("鍵を生成中… 端末の性能によって時間がかかります。");progress(0);
+ const raw=await scrypt(password,salt,N,R,P,DKLEN,p=>{progress(p);status("scryptで鍵を生成中… "+Math.floor(p*100)+"%")});
+ const key=await aesKey(raw);raw.fill(0);
+ let plain;try{plain=new Uint8Array(await crypto.subtle.decrypt({name:"AES-GCM",iv:nonce,additionalData:header,tagLength:128},key,body))}
+ catch{throw new Error("NOCT_AUTH_FAILED")}
+ if(plain.length>MAX)throw new Error("NOCT_RESOURCE_LIMIT");
+ try{return new TextDecoder("utf-8",{fatal:true}).decode(plain)}catch{throw new Error("NOCT_INVALID_UTF8")}finally{plain.fill(0)}
+}
+const messages={
+ NOCT_INVALID_ENCODING:"NOCT_INVALID_ENCODING：Base64URL形式が不正です。",
+ NOCT_INVALID_LENGTH:"NOCT_INVALID_LENGTH：データ長が不正です。",
+ NOCT_INVALID_MAGIC:"NOCT_INVALID_MAGIC：NOCTデータではありません。",
+ NOCT_UNSUPPORTED_VERSION:"NOCT_UNSUPPORTED_VERSION：未対応バージョンです。",
+ NOCT_UNSUPPORTED_ALGORITHM:"NOCT_UNSUPPORTED_ALGORITHM：未対応アルゴリズムです。",
+ NOCT_INVALID_PARAMETERS:"NOCT_INVALID_PARAMETERS：暗号パラメータが仕様と一致しません。",
+ NOCT_AUTH_FAILED:"NOCT_AUTH_FAILED：認証に失敗しました。パスフレーズ違い、またはデータ改ざんの可能性があります。",
+ NOCT_INVALID_UTF8:"NOCT_INVALID_UTF8：復号結果が正しいUTF-8ではありません。",
+ NOCT_RESOURCE_LIMIT:"NOCT_RESOURCE_LIMIT：許容サイズを超えています。"
+};
+async function run(){
+ if(busy)return;busy=true;$("run").disabled=true;$("output").value="";progress(0);
+ try{
+  if(!selfTestOK)throw new Error("SELF_TEST_FAILED");
+  if(!window.isSecureContext||!crypto?.subtle)throw new Error("SECURE_CONTEXT_REQUIRED");
+  const pass=enc.encode($("passphrase").value),input=$("source").value;
+  if(pass.length===0)throw new Error("EMPTY_PASSPHRASE");
+  if(pass.length>MAXPASS)throw new Error("PASSPHRASE_TOO_LONG");
+  if(action==="encrypt"){$("output").value=await encryptText(input,pass);status("暗号化完了。出力を安全な場所に保存してください。","good")}
+  else{$("output").value=await decryptText(input,pass);status("復号完了。","good")}
+ }catch(e){
+  const m=e.message||"UNKNOWN_ERROR";
+  if(messages[m])status(messages[m],"bad");
+  else if(m==="SECURE_CONTEXT_REQUIRED")status("SECURE_CONTEXT_REQUIRED：HTTPS対応の安全な接続で開いてください。","bad");
+  else if(m==="EMPTY_PASSPHRASE")status("空のパスフレーズは使用できません。","bad");
+  else if(m==="PASSPHRASE_TOO_LONG")status("パスフレーズはUTF-8で1,024バイト以内にしてください。","bad");
+  else if(m==="SELF_TEST_FAILED")status("起動時テストに失敗したため、処理を停止しました。","bad");
+  else status("処理に失敗しました。端末のメモリ不足、または予期しないエラーの可能性があります。","bad");
+  $("output").value="";
+ }finally{passphraseClear();busy=false;$("run").disabled=false;progress(0)}
+}
+function passphraseClear(){/* Keep the entered phrase available for a second operation; no storage is used. */}
+$("run").onclick=run;
+$("copy").onclick=async()=>{if(!$("output").value)return;try{await navigator.clipboard.writeText($("output").value);status("出力をコピーしました。","good")}catch{status("コピーできませんでした。出力欄を長押ししてコピーしてください。","bad")}};
+async function selfTest(){
+ try{
+  const got=await scrypt(new Uint8Array(0),new Uint8Array(0),16,1,1,64);
+  const expected="77d6576238657b203b19ca42c18a0497f16b4844e3074ae8dfdffa3fede21442fcd0069ded0948f8326a753a0fc81f17e8d3e0fb2e0d3628cf35e20c38d18906";
+  const actual=Array.from(got,x=>x.toString(16).padStart(2,"0")).join("");
+  selfTestOK=actual===expected;got.fill(0);
+  status(selfTestOK?"scrypt RFCテストベクトル合格。暗号処理を利用できます。":"scrypt RFCテストベクトル不合格。処理を停止します。",selfTestOK?"good":"bad");
+ }catch{selfTestOK=false;status("scrypt RFCテストベクトルを実行できませんでした。","bad")}
+}
+selfTest();
+</script></body></html>
