@@ -197,7 +197,28 @@ async function selfTest(){
   const actual=Array.from(got,x=>x.toString(16).padStart(2,"0")).join("");
   selfTestOK=actual===expected;got.fill(0);
   status(selfTestOK?"scrypt RFCテストベクトル合格。暗号処理を利用できます。":"scrypt RFCテストベクトル不合格。処理を停止します。",selfTestOK?"good":"bad");
- }catch{selfTestOK=false;status("scrypt RFCテストベクトルを実行できませんでした。","bad")}
+const key=await crypto.subtle.importKey(
+"raw",new Uint8Array(32),"AES-GCM",false,["encrypt","decrypt"]);
+const iv=new Uint8Array(12);
+const pt=new Uint8Array(16);
+const expected="cea7403d4d606b6e074ec5d3baf39d18d0d1c8a799996bf0265b98b5d48ab919";
+const encrypted=new Uint8Array(await crypto.subtle.encrypt(
+{name:"AES-GCM",iv,tagLength:128},key,pt));
+const actual=Array.from(encrypted,x=>x.toString(16).padStart(2,"0")).join("");
+const aesOK=actual===expected;
+const decrypted=await crypto.subtle.decrypt(
+{name:"AES-GCM",iv,tagLength:128},key,encrypted);
+const plainOK=new Uint8Array(decrypted).every(x=>x===0);
+const damaged=encrypted.slice();
+damaged[damaged.length-1]^=1;
+let tamperOK=false;
+try{
+await crypto.subtle.decrypt({name:"AES-GCM",iv,tagLength:128},key,damaged);
+}catch(e){tamperOK=true;}
+selfTestOK=selfTestOK&&aesOK&&plainOK&&tamperOK;
+status(aesOK&&plainOK&&tamperOK?
+"AES-256-GCMテストベクトル合格":
+"AES-256-GCM検証失敗"); }catch{selfTestOK=false;status("scrypt RFCテストベクトルを実行できませんでした。","bad")}
 }
 selfTest();
 </script></body></html>
